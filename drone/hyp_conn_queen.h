@@ -34,10 +34,10 @@ unsigned short QueenHostPort;
 
 #define EXCPT_STATUS    2
 
-int hyp_conn_queen_init(char *,char *,int,HYP_CONN_QUEEN_SOCKET *,int);
-int hyp_conn_queen_read(HYP_CONN_QUEEN_SOCKET *,char *,int);
+int hyp_conn_queen_init(char *,char *,int,HYP_CONN_QUEEN_SOCKET *,int,int nonBlock);
+int hyp_conn_queen_read(HYP_CONN_QUEEN_SOCKET *,char *,int,int nonBlock);
 int hyp_conn_queen_close(HYP_CONN_QUEEN_SOCKET *);
 int hyp_conn_queen_write(HYP_CONN_QUEEN_SOCKET *,char *,size_t);
 void hyp_conn_queen_drophead(HYP_CONN_QUEEN_SOCKET *);
 int xnet_select(int, int, int, short);
-int create_tcpsocket();
+int create_tcpsocket(int nonBlock);

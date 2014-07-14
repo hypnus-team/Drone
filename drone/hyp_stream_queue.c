@@ -46,7 +46,7 @@ int hyp_queue_insert(HYP_STREAM_QUEUE_HEAD * lpQueue,char * tid,unsigned int tNu
 			HYP_CONN_QUEEN_SOCKET stream_queue_hcqs;
 			char GetData[256] = {0};
 			sprintf (GetData,"%s""upstream.php?tid=""%.32s""&tno=""%i",QueenHostDir,tid,tNumber);
-			if (0 != hyp_conn_queen_init(GetData,0,0,&stream_queue_hcqs,1)){
+			if (0 != hyp_conn_queen_init(GetData,0,0,&stream_queue_hcqs,1,QueenSSL_nonBlock)){
                 ret = -1;
 			}else{			
 				//lock

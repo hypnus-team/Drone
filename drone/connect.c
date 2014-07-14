@@ -12,6 +12,8 @@
 
 #include "exec_thread.h"
 
+#include "hyp_mod_func.h"
+
 //check Mac exists ? exists: 1  ; not exists: 0
 int check_Mac_exists(uint32_t number,uint32_t * lp_Macs){
     
@@ -116,17 +118,16 @@ int request_router(){
 			newthread_creater((char *)&(c_header.Flag),0,0,2,0);
 		}else{
 			void * mod_exec = NULL;
-			MODULE_LIST * c_ModuleList = DroneModuleList;
-			debug_msg(" compare ... module List ... seek to : %i.%i.%i.%i \n",c_header.Module_NO[0],c_header.Module_NO[1],c_header.Module_NO[2],c_header.Module_NO[3]);
-			while ((0 != c_ModuleList->Module_NO[0]) || (0 != c_ModuleList->Module_NO[1]) || (0 != c_ModuleList->Module_NO[2]) || 
-				   (0 != c_ModuleList->Module_NO[3])){
-				if (0 == memcmp(&(c_ModuleList->Module_NO[0]),&c_header.Module_NO[0],16)){
-					mod_exec = c_ModuleList->Module_Func;
-                    debug_msg("Ok, module has been found !! \n");
-					break;
-				}
-				c_ModuleList ++;             
+
+            debug_msg(" compare ... module List ... seek to : %i.%i.%i.%i \n",c_header.Module_NO[0],c_header.Module_NO[1],c_header.Module_NO[2],c_header.Module_NO[3]);
+   
+			MODULE_LIST * c_ModuleList = mod_seek((char *) (&c_header.Module_NO[0]));
+           
+			if (c_ModuleList){
+			    mod_exec = c_ModuleList->Module_Func;
+				debug_msg("Ok, module has been found !! \n");
 			}
+
 			debug_msg("execute addr: %p ,RData: %s \n",mod_exec,lp_buff_read); 
 			if (mod_exec){
                 newthread_creater((char *)&(c_header.Flag),lp_buff_read,c_header.Request_size,0,mod_exec);
@@ -227,8 +228,9 @@ int connect_breath_srv(char *lp_submitBuff){
 	int n = 1;
 
     HYP_CONN_QUEEN_SOCKET breath_hcqs;
-    if (0 == hyp_conn_queen_init(lp_submitBuff,0,0,&breath_hcqs,1)){
-	    while ((n = hyp_conn_queen_read(&breath_hcqs,lp_buff_write, dw_buff_remained)) > 0){
+	
+    if (0 == hyp_conn_queen_init(lp_submitBuff,0,0,&breath_hcqs,1,QueenSSL_nonBlock)){
+	    while ((n = hyp_conn_queen_read(&breath_hcqs,lp_buff_write, dw_buff_remained,QueenSSL_nonBlock)) > 0){
 			debug_msg("\n< DroneStatus: %i <", DroneStatus);			
             
 			if (-9 == DroneStatus){
@@ -296,8 +298,8 @@ int init_srv(){
 	int ret = 1;
 
     HYP_CONN_QUEEN_SOCKET init_hcqs;
-    if (0 == hyp_conn_queen_init(GetData,0,0,&init_hcqs,1)){
-		if ((n = hyp_conn_queen_read(&init_hcqs,srv_init,1024)) >= 12){
+    if (0 == hyp_conn_queen_init(GetData,0,0,&init_hcqs,1,QueenSSL_nonBlock)){
+		if ((n = hyp_conn_queen_read(&init_hcqs,srv_init,1024,QueenSSL_nonBlock)) >= 12){
 			uint32_t *p = (uint32_t *) &srv_init ;
 			ResponseUnitSize = *p;
 			p ++;

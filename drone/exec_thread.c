@@ -12,7 +12,7 @@ int ReadStreamFunc(REQUEST_HEADER * RequestHeaderPtr,int tNumber,void * buff,int
 	HYP_STREAM_QUEUE * ptr = 0;
 	if (RequestHeaderPtr->StreamStruct){
 		if (0 == hyp_queue_insert(RequestHeaderPtr->StreamStruct,RequestHeaderPtr->Tid,tNumber,&ptr)){
-			ret = hyp_conn_queen_read(&ptr->hcqs,buff,buffSize);
+			ret = hyp_conn_queen_read(&ptr->hcqs,buff,buffSize,QueenSSL_nonBlock);
 			if (ret <= 0){
                 hyp_queue_destroy(RequestHeaderPtr->StreamStruct,RequestHeaderPtr->Tid,tNumber);
 			}
@@ -137,8 +137,8 @@ int send_stream_data_to_queen(int responseLen,char* responseBuff,char * httpHead
     HYP_CONN_QUEEN_SOCKET send_hcqs;
     int ret = 1;
 	debug_msg ("response stream sender[%i] : %s \n",responseLen,httpHead);
-	if (0 == hyp_conn_queen_init(httpHead,responseBuff,responseLen,&send_hcqs,1)){	    
-		if (0 <= hyp_conn_queen_read(&send_hcqs,(char *)&ret,1)){
+	if (0 == hyp_conn_queen_init(httpHead,responseBuff,responseLen,&send_hcqs,1,QueenSSL_nonBlock)){	    
+		if (0 <= hyp_conn_queen_read(&send_hcqs,(char *)&ret,1,QueenSSL_nonBlock)){
 			ret -= 0x30;
 		}else{
 		    ret = -1;
@@ -174,8 +174,8 @@ int send_data_to_queen(int responseLen,char* responseBuff,char * httpHead){
     char tmp;
 	int ret = -1;
 	debug_msg ("response sender[%i] : %s \n",responseLen,httpHead);
-	if (0 == hyp_conn_queen_init(httpHead,responseBuff,responseLen,&send_hcqs,0)){	    
-		if (0 <= hyp_conn_queen_read(&send_hcqs,&tmp,1)){
+	if (0 == hyp_conn_queen_init(httpHead,responseBuff,responseLen,&send_hcqs,0,QueenSSL_nonBlock)){	    
+		if (0 <= hyp_conn_queen_read(&send_hcqs,&tmp,1,QueenSSL_nonBlock)){
             ret = 0;
 		}
 		hyp_conn_queen_close(&send_hcqs);

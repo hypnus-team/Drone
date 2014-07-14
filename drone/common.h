@@ -10,6 +10,11 @@
     #define debug_msg(format,...)
 #endif   /* DEBUG */
 
+#ifdef QueenSSL_NonBlock
+    #define QueenSSL_nonBlock 1
+#else
+	#define QueenSSL_nonBlock 0
+#endif
 
 //Drone's Url submit Buffer
 #define DroneSubmitBuffSize 1024 * 1024
@@ -35,7 +40,8 @@ uint32_t DroneID;
 typedef struct{
 	uint32_t Module_NO[4];
 	void *   Module_Func;
-	void *   Module_Base;
+	void *   Module_Notify;
+	void *   Module_Base;	
 }MODULE_LIST;
 #pragma pack()
 
@@ -44,6 +50,7 @@ MODULE_LIST * DroneModuleList;
 //Queen srv 's contents
 void * lpQueenSin;
 struct sockaddr_in QueenSin;
+struct protoent * lpQueenPpe;
 
 //upgrade Drone online
 void * newDroneModuleList;

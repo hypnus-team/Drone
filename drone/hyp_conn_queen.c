@@ -39,7 +39,7 @@ static int timeout_microsec = 0;
 
 //ret:  0 success
 //     -1 fail
-int hyp_conn_queen_init(char * GetData,char * PostData,int PostSize,HYP_CONN_QUEEN_SOCKET * hcqs,int dropHead){
+int hyp_conn_queen_init(char * GetData,char * PostData,int PostSize,HYP_CONN_QUEEN_SOCKET * hcqs,int dropHead,int nonBlock){
 
     //construct http head
 	char method[5];
@@ -65,7 +65,7 @@ int hyp_conn_queen_init(char * GetData,char * PostData,int PostSize,HYP_CONN_QUE
 
     /* make connection to the cache server */
 
-    fd = create_tcpsocket();
+    fd = create_tcpsocket(nonBlock);
 	if (fd < 0 ){
 		debug_msg("create_tcpsocket failed (ret: %i)\n",fd);
         return -1;
@@ -188,7 +188,7 @@ void hyp_conn_queen_drophead(HYP_CONN_QUEEN_SOCKET * hcqs){
     //debug_msg("\n Drop head start: \n");
 
 	while (1 == n){
-		n = hyp_conn_queen_read(hcqs,(char *)&flag,1);
+		n = hyp_conn_queen_read(hcqs,(char *)&flag,1,QueenSSL_nonBlock);
 
         //debug_msg("%s",(char *)&flag);
 
@@ -208,27 +208,27 @@ void hyp_conn_queen_drophead(HYP_CONN_QUEEN_SOCKET * hcqs){
 //== 0  timeout 
 //<  0  fail  | (select ok & read zero) => conn broken
 
-int hyp_conn_queen_read(HYP_CONN_QUEEN_SOCKET * hcqs,char * buff,int buffSize){
+int hyp_conn_queen_read(HYP_CONN_QUEEN_SOCKET * hcqs,char * buff,int buffSize,int nonBlock){
 	int n;
 	#ifdef QueenSSL		
-		#ifdef QueenSSL_NonBlock
-		while (1){
-	        if ((n = xnet_select(hcqs->fd, timeout_sec, timeout_microsec, READ_STATUS)>0)){   
-			    if (0 == (n = SSL_read(hcqs->ssl, buff, buffSize))){
-				    n = -1;
-				}else if (-1 == n){
-				    if (SSL_ERROR_WANT_READ == SSL_get_error (hcqs->ssl,n)){
-                        continue;
-					}
-				}	
+		if (nonBlock){ //#ifdef QueenSSL_NonBlock
+			while (1){
+				if ((n = xnet_select(hcqs->fd, timeout_sec, timeout_microsec, READ_STATUS)>0)){   
+					if (0 == (n = SSL_read(hcqs->ssl, buff, buffSize))){
+						n = -1;
+					}else if (-1 == n){
+						if (SSL_ERROR_WANT_READ == SSL_get_error (hcqs->ssl,n)){
+							continue;
+						}
+					}	
+				}
+				break;
+			}	
+	    }else{ //#else
+		    if (0 == (n = SSL_read(hcqs->ssl, buff, buffSize))){
+				n = -1;
 			}
-			break;
-	    }		  
-	    #else
-		  if (0 == (n = SSL_read(hcqs->ssl, buff, buffSize))){
-		      n = -1;
-		  }
-		#endif		
+		}      //#endif		
     #else     
 	 if ((n = xnet_select(hcqs->fd, timeout_sec, timeout_microsec, READ_STATUS)>0)){    
          if (0 == (n = read(hcqs->fd, buff, buffSize))){
@@ -288,7 +288,7 @@ int hyp_conn_queen_write(HYP_CONN_QUEEN_SOCKET * hcqs,char * buff,size_t TotalSi
 
 /* create common tcp socket connection */
 
-int create_tcpsocket(){
+int create_tcpsocket(int nonBlock){
 
     int ret;
 
@@ -297,7 +297,7 @@ int create_tcpsocket(){
 
     struct hostent *phe; /* pointer to host information entry */
 
-    struct protoent *ppe; /* pointer to protocol information entry */
+    //struct protoent *ppe; /* pointer to protocol information entry */
 
     //struct sockaddr_in sin; /* an Internet endpoint address */
 
@@ -326,7 +326,7 @@ int create_tcpsocket(){
 		}else{
 
 			
-			if( (QueenSin.sin_addr.s_addr = inet_addr(QueenDomainName)) == inet_addr ){
+			if( (QueenSin.sin_addr.s_addr = inet_addr(QueenDomainName)) == INADDR_NONE ){
 				debug_msg("can't get \"%s\" host entry\n", QueenDomainName);
 				return -12;
 			}
@@ -336,17 +336,18 @@ int create_tcpsocket(){
     }
 
     /* Map transport protocol name to protocol number */
-
-    if ((ppe = getprotobyname(transport)) == 0){
-        debug_msg("can't get \"%s\" protocol entry\n", transport);
-		return -11;
+    if (0 == lpQueenPpe){
+		if ((lpQueenPpe = getprotobyname(transport)) == 0){
+			debug_msg("can't get \"%s\" protocol entry\n", transport);
+			return -11;
+		}
 	}
 
     
 
     /* Allocate a common TCP socket */
 
-    s = socket(PF_INET, SOCK_STREAM, ppe->p_proto);
+    s = socket(PF_INET, SOCK_STREAM, lpQueenPpe->p_proto);
 
     if (s < 0){
         debug_msg("can't create socket: %s\n", strerror(errno));
@@ -361,9 +362,11 @@ int create_tcpsocket(){
 		/* create common tcp socket.seems non-block type is not supported by ssl. */
         
         ret = connect(s, (struct sockaddr *)&QueenSin, sizeof(QueenSin)); 
-		#ifdef QueenSSL_NonBlock
+		
+		if (nonBlock){ //#ifdef QueenSSL_NonBlock
 			fcntl(s,F_SETFL, O_NONBLOCK);
-		#endif
+		}              //#endif
+
     #else
 
 		/* Connect the socket with timeout */
